@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { useState, useEffect } from 'react';
 import Button from './Button/Button';
 import { ToastContainer, toast } from 'react-toastify';
 import { InfinitySpin } from 'react-loader-spinner';
@@ -8,82 +8,74 @@ import Searchbar from './Searchbar/Searchbar';
 import ApiImages from 'services/Api';
 import css from './App.module.css';
 
-class App extends Component {
-  state = {
-    search: '',
-    images: null,
-    page: 1,
-    isLoading: false,
-    error: '',
-  };
+const App = () => {
+  const [search, setSearch] = useState('');
+  const [images, setImages] = useState(null);
+  const [page, setPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
 
-  async componentDidUpdate(_, prevState) {
-    const { page, search } = this.state;
-    try {
-      if (prevState.search !== search) {
-        this.setState({
-          isLoading: true,
-        });
+  useEffect(() => {
+    async function getImages() {
+      try {
+        setIsLoading(true);
+
         const images = await ApiImages(search);
+
         const { hits, total } = images.data;
         toast(`Знайдено картинок ${total}`);
         if (!total) {
           toast(`Нічого не знайдено за пошуком ${search}, перевірте!!!`);
         }
-        this.setState({
-          page: 1,
-          images: hits,
-          isLoading: false,
-        });
+        setImages(hits);
+      } catch (error) {
+        toast(error);
+      } finally {
+        setIsLoading(false);
       }
-
-      if (prevState.page !== page) {
-        const { images } = this.state;
-        this.setState({
-          isLoading: true,
-        });
-        const data = await ApiImages(search, page);
-        const { hits } = data.data;
-        this.setState({
-          images: [...images, ...hits],
-          isLoading: false,
-        });
-      }
-    } catch (error) {
-      this.setState({ error: error });
     }
-  }
+    if (search) {
+      getImages();
+    }
+  }, [search]);
 
-  searchInput = message => {
-    this.setState({
-      search: message,
-      images: null,
-      page: 1,
-    });
+  useEffect(() => {
+    async function getImages() {
+      try {
+        setIsLoading(true);
+        const images = await ApiImages(search, page);
+        const { hits } = images.data;
+        setImages(prev => [...prev, ...hits]);
+      } catch (error) {
+        toast.error(error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    if (page > 1) {
+      getImages();
+    }
+  }, [search, page]);
+
+  const searchInput = message => {
+    setSearch(message);
+    setImages(null);
+    setPage(1);
   };
 
-  LoadMoreBtn = () => {
-    this.setState(prev => ({
-      page: prev.page + 1,
-    }));
-  };
-
-  render() {
-    const { images, isLoading } = this.state;
-    return (
-      <>
-        <Searchbar onSubmit={this.searchInput} />
-        <ImageGallery images={images} />
-        <ToastContainer autoClose={1500} />
-        {isLoading && (
-          <div className={css.spinner}>
-            <InfinitySpin width="200" color="#4fa94d" />
-          </div>
-        )}
-        {images?.length && <Button onClick={this.LoadMoreBtn} />}
-      </>
-    );
-  }
-}
+  const loadMoreBtn = () => setPage(prev => prev + 1);
+  return (
+    <>
+      <Searchbar onSubmit={searchInput} />
+      <ImageGallery images={images} />
+      <ToastContainer autoClose={1500} />
+      {isLoading && (
+        <div className={css.spinner}>
+          <InfinitySpin width="200" color="#4fa94d" />
+        </div>
+      )}
+      {images?.length && <Button onClick={loadMoreBtn} />}
+    </>
+  );
+};
 
 export default App;
