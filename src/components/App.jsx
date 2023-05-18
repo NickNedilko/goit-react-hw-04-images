@@ -7,18 +7,20 @@ import ImageGallery from './ImageGallery/ImageGallery';
 import Searchbar from './Searchbar/Searchbar';
 import ApiImages from 'services/Api';
 import css from './App.module.css';
+import Error from './Error/Error';
 
 const App = () => {
   const [search, setSearch] = useState('');
   const [images, setImages] = useState(null);
   const [page, setPage] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(false);
+
 
   useEffect(() => {
     async function getImages() {
       try {
         setIsLoading(true);
-
         const images = await ApiImages(search);
 
         const { hits, total } = images.data;
@@ -28,7 +30,7 @@ const App = () => {
         }
         setImages(hits);
       } catch (error) {
-        toast(error);
+        setError(true)
       } finally {
         setIsLoading(false);
       }
@@ -46,7 +48,7 @@ const App = () => {
         const { hits } = images.data;
         setImages(prev => [...prev, ...hits]);
       } catch (error) {
-        toast.error(error);
+        setError(true)
       } finally {
         setIsLoading(false);
       }
@@ -65,7 +67,9 @@ const App = () => {
   const loadMoreBtn = () => setPage(prev => prev + 1);
   return (
     <>
+    
       <Searchbar onSubmit={searchInput} />
+      {error && <Error/>}
       <ImageGallery images={images} />
       <ToastContainer autoClose={1500} />
       {isLoading && (
